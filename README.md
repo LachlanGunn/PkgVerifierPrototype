@@ -46,6 +46,12 @@ We can check whether a user has access to a path:
     julia> verify_user_access(repo, "user1", "/Project2/filename")
     false
 
+Or we can sign some data:
+
+    julia> cert = construct_data_certificate(repo, "user1", "Hello, World!")
+    julia> open_data_certificate(repo, cert)
+    "Hello, World!"
+
 # Repository documentation
 
 This is just a test system, and all keys are available at all times.  We have
@@ -65,7 +71,7 @@ being given by "{name}.key".  The format is as above; the name here is used
 merely for lookup purposes, however it is included in the permission
 certificates and thus will be validated anyway.
 
-## Certificates
+## User Certificates
 
 Permissions are determined by certificates signed by the master key.  These
 are stored in "repo/certificates", and their format will be described shortly.
@@ -90,3 +96,13 @@ set of JSON data:
 
 This allows a package to verify that a user has permission to sign files
 under various paths.
+
+## Data Certificates
+
+Users can sign pieces of data, yielding a data certificate.  This takes
+the following form:
+
+    { "signer":      "UserPublicKeyInBase64==",
+      "certificate": { ... user certificate ... },
+      "data":        "SignedDataInBase64==" }
+
