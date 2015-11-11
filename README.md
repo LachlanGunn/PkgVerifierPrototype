@@ -15,6 +15,8 @@ Install the following packages
     Pkg.clone("https://github.com/LachlanGunn/TweetNaCl")
     Pkg.clone("https://github.com/PkgVerifierPrototype")
 
+    Pkg.build("TweetNaCl")
+
 We use the TweetNaCl library---http://tweetnacl.cr.yp.to/---for
 signature operations; this is included in the package above.
 
