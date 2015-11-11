@@ -1,6 +1,6 @@
 module PkgVerifierPrototype
 
-export create_signature_repository, create_user, create_user_certificate, verify_user_access, get_user_certificate
+export create_signature_repository, create_user, create_user_certificate, verify_user_access, get_user_certificate, construct_data_certificate, open_data_certificate
 
 import TweetNaCl
 import JSON
@@ -117,13 +117,7 @@ function get_user_keys(path::AbstractString, user::AbstractString)
            base64decode(json_parsed["secret"])
 end
 
-function get_user_certificate(path::AbstractString, user::AbstractString)
-    certificate_filename = joinpath(path, "repo", "certificates", "$user.cert")
-    fh = open(certificate_filename)
-    certificate_wrapped_json = readall(fh)
-    close(fh)
-
-    certificate_wrapped = JSON.parse(certificate_wrapped_json)
+function get_user_permissions_from_certificate(path::AbstractString, certificate_wrapped::Dict)
 
     master_pk, _ = get_master_keys(path)
 
@@ -137,17 +131,35 @@ function get_user_certificate(path::AbstractString, user::AbstractString)
                              master_pk)
 
     certificate = JSON.parse(ASCIIString(certificate_json))
-    if certificate["name"] != user
-        error("Invalid user name")
+    return base64decode(certificate["user"]), certificate["name"], certificate["directories"]
+end
+
+function get_user_permissions(path::AbstractString, user::AbstractString)
+    user_pk, user_name, directories = get_user_permissions_from_certificate(
+                                             path,
+                                             get_user_certificate(path, user))
+    if user_name != user
+        error("User name does not match certificate.")
     end
-    return base64decode(certificate["user"]), certificate["directories"]
+    return user_pk, user_name, directories
+end
+
+function get_user_certificate(path::AbstractString, user::AbstractString)
+
+    certificate_filename = joinpath(path, "repo", "certificates", "$user.cert")
+    fh = open(certificate_filename)
+    certificate_wrapped_json = readall(fh)
+    close(fh)
+
+    return JSON.parse(certificate_wrapped_json)
+
 end
 
 function verify_user_access(path::AbstractString,
                             user::AbstractString,
                             target::AbstractString)
 
-    _, allowable_directories = get_user_certificate(path, user)
+    _, _, allowable_directories = get_user_permissions(path, user)
     stripped_target = strip(target)
 
     for dir in allowable_directories
@@ -170,6 +182,37 @@ function verify_user_access(path::AbstractString,
     end
 
     return false
+end
+
+function construct_data_certificate(repo::AbstractString,
+                                    user::AbstractString,
+                                    data::AbstractString)
+
+
+    user_pk, user_sk = get_user_keys(repo, user)
+
+    user_certificate = get_user_certificate(repo, user)
+    
+    certificate = Dict([(:signer, base64encode(user_pk)),
+                        (:certificate, user_certificate),
+                        (:data, base64encode(
+                                    TweetNaCl.crypto_sign(data, user_sk)))])
+    
+    return JSON.json(certificate)
+end
+
+function open_data_certificate(repo::AbstractString,
+                               certificate_json::AbstractString)
+
+    certificate = JSON.parse(certificate_json)
+    user_pk, user_name, permissions = get_user_permissions_from_certificate(
+                                  repo, certificate["certificate"])
+
+    if user_pk != base64decode(certificate["signer"])
+        error("Certificate public key does not match.")
+    end
+
+    return ASCIIString(TweetNaCl.crypto_sign_open(base64decode(certificate["data"]), user_pk))
 end
 
 end # module
