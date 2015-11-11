@@ -75,7 +75,7 @@ once again a JSON file.  These are slightly more complicated, however.  The
 format is as follows:
 
        { "authority": "MasterPublicKeyInBase64==",
-         "certificiate": "SignedCertificateInBase64==" } .
+         "certificate": "SignedCertificateInBase64==" } .
 
 Software verifying the certificate checks that the public key included
 in the certificate is trusted, and then uses it to verify and unpack
