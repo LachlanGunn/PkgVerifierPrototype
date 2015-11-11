@@ -1,6 +1,6 @@
 module PkgVerifierPrototype
 
-export create_signature_repository
+export create_signature_repository, create_user, create_user_certificate, verify_user_access, get_user_certificate
 
 import TweetNaCl
 import JSON
@@ -117,7 +117,7 @@ function get_user_keys(path::AbstractString, user::AbstractString)
            base64decode(json_parsed["secret"])
 end
 
-function get_user_permissions(path::AbstractString, user::AbstractString)
+function get_user_certificate(path::AbstractString, user::AbstractString)
     certificate_filename = joinpath(path, "repo", "certificates", "$user.cert")
     fh = open(certificate_filename)
     certificate_wrapped_json = readall(fh)
@@ -140,23 +140,28 @@ function get_user_permissions(path::AbstractString, user::AbstractString)
     if certificate["name"] != user
         error("Invalid user name")
     end
-    return certificate["directories"]
+    return base64decode(certificate["user"]), certificate["directories"]
 end
 
 function verify_user_access(path::AbstractString,
                             user::AbstractString,
                             target::AbstractString)
 
-    allowable_directories = get_user_permissions(path, user)
+    _, allowable_directories = get_user_certificate(path, user)
     stripped_target = strip(target)
 
     for dir in allowable_directories
+
         if dir[end] != '/'
             dir = "$dir/"
         end
 
         if dir[1] != '/'
             dir = "/$dir"
+        end
+
+        if length(dir) > length(stripped_target)
+            continue
         end
 
         if stripped_target[1:length(dir)] == dir
