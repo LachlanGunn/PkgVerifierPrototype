@@ -62,8 +62,8 @@ will throw an error:
 
     julia> verify_package_certificate(repo, cert)
     ERROR: Package verification failed.
- in verify_package_certificate at /home/lachlan/.julia/v0.5/PkgVerifierPrototype/src/PkgVerifierPrototype.jl:271
- in eval at ./boot.jl:264
+     in verify_package_certificate at /home/lachlan/.julia/v0.5/PkgVerifierPrototype/src/PkgVerifierPrototype.jl:271
+     in eval at ./boot.jl:264
 
 # Repository documentation
 
