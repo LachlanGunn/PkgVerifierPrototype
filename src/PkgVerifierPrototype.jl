@@ -1,9 +1,10 @@
 module PkgVerifierPrototype
 
-export create_signature_repository, create_user, create_user_certificate, verify_user_access, get_user_certificate, construct_data_certificate, open_data_certificate
+export create_signature_repository, create_user, create_user_certificate, verify_user_access, get_user_certificate, construct_data_certificate, open_data_certificate, traverse_dir
 
 import TweetNaCl
 import JSON
+import SHA
 
 function create_signature_repository(path::AbstractString)
     if ispath(path)
@@ -215,4 +216,61 @@ function open_data_certificate(repo::AbstractString,
     return ASCIIString(TweetNaCl.crypto_sign_open(base64decode(certificate["data"]), user_pk))
 end
 
+function hash_dir(dir::AbstractString, dir_relpath::AbstractString = "")
+    const to_ignore = [".git"]
+
+    results = []
+
+    contents = sort(readdir(dir))
+    for file in contents
+        path = joinpath(dir, file)
+        relpath = joinpath(dir_relpath, file)
+
+        if isfile(path)
+            # Find hash
+            open(path, "r") do f
+                hash = SHA.sha512(f)
+                push!(results, [relpath, hash, "SHA-512"])
+            end
+
+            
+        elseif isdir(path)
+            if !(file in to_ignore)
+                results = vcat(results, hash_dir(path, relpath))
+            end
+        end
+    end
+
+    return results
+end
+
+function hash_pkg(pkg::AbstractString)
+    dir = Pkg.dir(pkg)
+    if isdir(dir)
+        return hash_dir(dir)
+    else
+        error("Package directory does not exist.")
+    end
+end
+
+function construct_package_certificate(repo::AbstractString,
+                                       user::AbstractString,
+                                       pkg::AbstractString)
+
+    hashes = hash_pkg(pkg)
+    return construct_data_certificate(repo, user, JSON.json(Dict([
+               ("package", pkg), ("hashes", hashes)])))
+end
+
+function verify_package_certificate(repo::AbstractString,
+                                    certificate::AbstractString)
+
+    contents = JSON.parse(open_data_certificate(repo, certificate))
+    hashes_local = hash_pkg(contents["package"])
+    if hashes_local != contents["hashes"]
+        error("Package verification failed.")
+    end
+end
+
 end # module
+

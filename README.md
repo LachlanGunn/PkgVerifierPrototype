@@ -52,6 +52,19 @@ Or we can sign some data:
     julia> open_data_certificate(repo, cert)
     "Hello, World!"
 
+Better yet, sign a package:
+
+    julia> cert = construct_package_certificate(repo, "user1", "PackageVerifierPrototype")
+    julia> verify_package_certificate(repo, cert)
+
+But change the contents of the package---try adding an empty file---and it
+will throw an error:
+
+    julia> verify_package_certificate(repo, cert)
+    ERROR: Package verification failed.
+ in verify_package_certificate at /home/lachlan/.julia/v0.5/PkgVerifierPrototype/src/PkgVerifierPrototype.jl:271
+ in eval at ./boot.jl:264
+
 # Repository documentation
 
 This is just a test system, and all keys are available at all times.  We have
@@ -106,3 +119,14 @@ the following form:
       "certificate": { ... user certificate ... },
       "data":        "SignedDataInBase64==" }
 
+
+## Package Certificates
+
+Package certificates are a particular type of data certificate, containing
+a structure of the following form:
+
+    { "package" : "PackageName",
+      "hashes"  : [ [ "FileName", "HashInHex", "HashType"], ... ] }
+
+Filenames are relative to the package root returned by dir("PackageName"),
+and exclude .git directories.  HashType is always "SHA-512".
