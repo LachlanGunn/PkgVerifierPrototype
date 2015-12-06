@@ -162,6 +162,12 @@ function verify_user_access(path::AbstractString,
                             target::AbstractString)
 
     _, _, allowable_directories = get_user_permissions(path, user)
+    return verify_access(target, allowable_directories)
+end
+
+function verify_access(target::AbstractString,
+                       allowable_directories::Array)
+
     stripped_target = strip(target)
 
     for dir in allowable_directories
@@ -248,7 +254,7 @@ end
 function hash_pkg(pkg::AbstractString)
     dir = Pkg.dir(pkg)
     if isdir(dir)
-        return hash_dir(dir)
+        return hash_dir(dir, "/$pkg")
     else
         error("Package directory does not exist.")
     end
@@ -273,15 +279,22 @@ function verify_package_certificate(repo::AbstractString,
                                                    repo,
                                                    user_certificate)
 
+    for hash in contents["hashes"]
+        if !verify_access(hash[1], permissions)
+            error("Package verification failed: permission error.")
+        end
+    end
+
     hashes_local = hash_pkg(contents["package"])
     if hashes_local != contents["hashes"]
-        error("Package verification failed.")
+        error("Package verification failed: hash error.")
     end
 end
 
-function verify_package_from_url(repo::AbstractString,
-                                 package::AbstractString,
-                                 url::AbstractString)
+
+function get_package_certificate_from_url(repo::AbstractString,
+                                          package::AbstractString,
+                                          url::AbstractString)
 
     response = Requests.post("$url/cert/$package")
     if response.status != 200
@@ -292,6 +305,15 @@ function verify_package_from_url(repo::AbstractString,
     if cert == "\"FAILURE\""
         error("Package unavailable.")
     end
+
+    return cert
+end
+
+function verify_package_from_url(repo::AbstractString,
+                                 package::AbstractString,
+                                 url::AbstractString)
+
+    cert = get_package_certificate_from_url(repo, package, url)
 
     return verify_package_certificate(repo, cert)
 end

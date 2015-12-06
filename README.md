@@ -6,7 +6,6 @@ this is UNIX-only, though it is easily portable to Windows as well.
 Todo:
 
  - Write PRNG code and build for Windows.
- - Check permissions of package certificates.
 
 ## Setup
 
@@ -35,7 +34,7 @@ To set up the test repository, perform the following commands:
 
 Permissions are set as a list of directories.  
 
-    create_user_certificate(repo, "user1", ["Project1A", "Project1B"])
+    create_user_certificate(repo, "user1", ["Project1A", "Project1B", "PkgVerifierPrototype"])
     create_user_certificate(repo, "user2", ["Project2"])
 
 We can check whether a user has access to a path:
@@ -54,7 +53,7 @@ Or we can sign some data:
 
 Better yet, sign a package:
 
-    julia> cert = construct_package_certificate(repo, "user1", "PackageVerifierPrototype")
+    julia> cert = construct_package_certificate(repo, "user1", "PkgVerifierPrototype")
     julia> verify_package_certificate(repo, cert)
 
 But change the contents of the package---try adding an empty file---and it
