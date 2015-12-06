@@ -6,7 +6,7 @@ this is UNIX-only, though it is easily portable to Windows as well.
 Todo:
 
  - Write PRNG code and build for Windows.
- - Implement package-signing certificates.
+ - Check permissions of package certificates.
 
 ## Setup
 
@@ -64,6 +64,11 @@ will throw an error:
     ERROR: Package verification failed.
      in verify_package_certificate at /home/lachlan/.julia/v0.5/PkgVerifierPrototype/src/PkgVerifierPrototype.jl:271
      in eval at ./boot.jl:264
+
+There is a serverside component as well---see https://github.com/LachlanGunn/PkgVerifierServerPrototype---to which we can connect:
+
+    julia> sign_package_to_url(repo, "user1", "PkgVerifierPrototype", "http://localhost:8000")
+    julia> verify_package_from_url(repo, "PkgVerifierPrototype", "http://localhost:8000")
 
 # Repository documentation
 

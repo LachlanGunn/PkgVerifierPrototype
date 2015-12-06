@@ -5,6 +5,7 @@ export create_signature_repository, create_user, create_user_certificate, verify
 import TweetNaCl
 import JSON
 import SHA
+import Requests
 
 function create_signature_repository(path::AbstractString)
     if ispath(path)
@@ -266,11 +267,56 @@ function verify_package_certificate(repo::AbstractString,
                                     certificate::AbstractString)
 
     contents = JSON.parse(open_data_certificate(repo, certificate))
+
+    user_certificate = JSON.parse(certificate)["certificate"]
+    user, username, permissions = get_user_permissions_from_certificate(
+                                                   repo,
+                                                   user_certificate)
+
     hashes_local = hash_pkg(contents["package"])
     if hashes_local != contents["hashes"]
         error("Package verification failed.")
     end
 end
 
+function verify_package_from_url(repo::AbstractString,
+                                 package::AbstractString,
+                                 url::AbstractString)
+
+    response = Requests.post("$url/cert/$package")
+    if response.status != 200
+        error("Failed to retrieve certificate.")
+    end
+
+    cert = ASCIIString(response.data)
+    if cert == "\"FAILURE\""
+        error("Package unavailable.")
+    end
+
+    return verify_package_certificate(repo, cert)
+end
+
+function sign_package_to_url(repo::AbstractString,
+                             user::AbstractString,
+                             package::AbstractString,
+                             url::AbstractString)
+
+
+    cert = construct_package_certificate(repo, user, package)
+
+    response = Requests.post("$url/push/$package", data=cert)
+
+    if response.status != 200
+        error("Failed to push certificate.")
+    end
+
+    response_data = ASCIIString(response.data)
+    if response_data != "\"SUCCESS\""
+        error("Certificate refused.")
+    end
+end
+                                             
+
 end # module
+
 
